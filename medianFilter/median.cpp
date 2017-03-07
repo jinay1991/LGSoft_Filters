@@ -50,7 +50,7 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
             }
             
             std::sort(&avg[0], &avg[size]);
-            double median = 0;
+            uint32_t median = 0;
             if (size % 2)
                 median = avg[size / 2];
             else
@@ -75,9 +75,10 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
 class medianFilter: public ::testing::TestWithParam<size_t>{};
 TEST_P(medianFilter, ksize)
 {
-    cv::Mat input = cv::imread("/Users/jinay/workspace/git-repo/imfilter/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    cv::Mat input = cv::imread("/Users/jinay/workspace/git-repo/LGSoft_Filters/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
+    ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;;
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
-
     size_t ksize = GetParam();
 
     // target algorithm results
@@ -85,20 +86,22 @@ TEST_P(medianFilter, ksize)
     m.Median(input.data, output.data, input.cols, input.rows);
 
     // reference algorithm results
-    cv::Mat ocvResult = cv::Mat::zeros(input.size(), CV_8UC1);
+    cv::Mat ocvResult;
     cv::medianBlur(input, ocvResult, ksize);
 
     // finding difference between reference and target algorithms, to evaluate.
     cv::Mat diffImage;
-    cv::absdiff(output, ocvResult, diffImage);
+    cv::compare(output, ocvResult, diffImage, cv::CMP_NE);
     int diffCount = cv::countNonZero(diffImage);
-    EXPECT_LE(diffCount, input.cols * ksize);
-
-    // cv::imshow("cv::medianBlur", ocvResult);
-    // cv::imshow("Input", input);
-    // cv::imshow("output", output);
-    // cv::imshow("diffImage", diffImage);
-    // cv::waitKey(0);
+#ifndef _NDEBUG
+    cv::imshow("inImage", input);
+    cv::imshow("refImage", ocvResult);
+    cv::imshow("outImage", output);
+    cv::imshow("diffImage", diffImage);
+    cv::waitKey(0);
+#endif
+    
+    EXPECT_EQ(diffCount, 0);
 }
-INSTANTIATE_TEST_CASE_P(Filters, medianFilter, ::testing::Values(3,5));
+INSTANTIATE_TEST_CASE_P(Filters, medianFilter, ::testing::Values(15));
 #endif 

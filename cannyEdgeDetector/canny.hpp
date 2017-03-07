@@ -15,12 +15,14 @@
 
 class CannyEdgeDetector
 {
+    private:
+        void Convolution(const uint8_t *x, const uint8_t *h, uint8_t *y, int width, int height);
+    
     public:
         CannyEdgeDetector()
         {
             std::cout << "CannyEdgeDetector()" << std::endl;
         }
-
         void Canny(int m);
 };
 
