@@ -1,3 +1,13 @@
+/**
+ *  median.cpp
+ *   
+ *  Contains method for MedianFilter Class and Implementation for Median Filter
+ *  (File also included Unit Test _disabled with compiler switch UNIT_TEST)
+ *
+ *  Created by Jinay Patel
+ *  License - GPL v2
+ */
+
 #include "median.hpp"
 
 MedianFilter::MedianFilter()

@@ -1,3 +1,13 @@
+/**
+ *  canny.cpp
+ *   
+ *  Contains method for CannyEdgeDetector Class and Implementation for Canny Edge Detector
+ *  (File also included Unit Test _disabled with compiler switch UNIT_TEST)
+ *
+ *  Created by Jinay Patel
+ *  License - GPL v2
+ */
+
 #include "canny.hpp"
 
 void CannyEdgeDetector::Canny(int m)
