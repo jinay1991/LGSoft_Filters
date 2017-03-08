@@ -1,6 +1,6 @@
 /**
  *  canny.cpp
- *   
+ *
  *  Contains method for CannyEdgeDetector Class and Implementation for Canny Edge Detector
  *  (File also included Unit Test _disabled with compiler switch UNIT_TEST)
  *
@@ -11,87 +11,327 @@
 #include "canny.hpp"
 CannyEdgeDetector::CannyEdgeDetector()
 {
-    kernel[0] = kernel[1] = 5;
+    sigma = 0.4f;
+    ksize = 3;
 }
-CannyEdgeDetector::CannyEdgeDetector(size_t ksize)
+CannyEdgeDetector::CannyEdgeDetector(size_t ksize_, float sigma_)
 {
-    kernel[0] = kernel[1] = ksize;
+    sigma = sigma_;
+    ksize = ksize_;
 }
-void CannyEdgeDetector::Convolution(const uint8_t *x, const double *h_, uint8_t *y, int kWidth, int kHeight, int width, int height)
+/* gaussianFilter:
+  * http://www.songho.ca/dsp/cannyedge/cannyedge.html
+  * determine size of kernel (odd #)
+  * 0.0 <= sigma < 0.5 : 3
+  * 0.5 <= sigma < 1.0 : 5
+  * 1.0 <= sigma < 1.5 : 7
+  * 1.5 <= sigma < 2.0 : 9
+  * 2.0 <= sigma < 2.5 : 11
+  * 2.5 <= sigma < 3.0 : 13 ...
+  * kernelSize = 2 * int(2*sigma) + 3;
+  */
+void CannyEdgeDetector::createFilter(float **kernel)
 {
-    int k_w, k_h;
-    int kH = kHeight / 2;
-    int kW = kWidth / 2;
-    int w, h;
-    for (h = 0; h < height; h++)
+    // set standard deviation to 1.0
+    if(sigma == 0)
+        sigma = 1.0;
+    if(ksize == 0)
+        ksize = 2 * (int)(2*sigma) + 3;
+    float r, s = 2.0 * sigma * sigma;
+
+    std::cout << "ksize: " << ksize << " sigma: " << sigma << std::endl;
+
+    if(*kernel == NULL)
+        *kernel = new float[ksize * ksize];
+
+    // sum is for normalization
+    float sum = 0.0;
+    int kH = (int)ksize / 2;
+    int kW = (int)ksize / 2;
+    // generate NxN kernel
+    for (int h = -kH; h <= kH; h++)
     {
-        for (w = 0; w < width; w++)
+        for(int w = -kW; w <= kW; w++)
         {
-            double sum = 0;
-            double dot = 0;
-            for (k_h = -kH; k_h <= kH; k_h++)
+            r = sqrt(w * w + h * h);
+
+            (*kernel)[(h + kH) * ksize + (w + kW)] = (exp(-(r*r)/s))/(M_PI * s);
+            sum += (*kernel)[(h + kH) * ksize + (w + kW)];
+        }
+    }
+
+    // normalize the Kernel
+    for(int h = 0; h < (int)ksize; ++h)
+        for(int w = 0; w < (int)ksize; ++w)
+            (*kernel)[h * ksize + w] /= sum;
+
+}
+
+int CannyEdgeDetector::reflect(int M, int x)
+{
+    if(x < 0)
+        return -x - 1;
+    if(x >= M)
+        return 2*M - x - 1;
+   return x;
+}
+void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel, uint8_t *output, int width, int height, int ksize)
+{
+    int kH = ksize / 2;
+    int kW = ksize / 2;
+    for (int h = 0; h < height; h++)
+    {
+        for (int w = 0; w < width; w++)
+        {
+            float sum = 0;
+            for (int k_h = -kH; k_h <= kH; k_h++)
             {
-                for (k_w = -kW; k_w <= kW; k_w++)
+                for (int k_w = -kW; k_w <= kW; k_w++)
                 {
-                    int cur_h = std::max(0, h + k_h);
-                    int cur_w = std::max(0, w + k_w);
-                    cur_h = std::min(height, cur_h);
-                    cur_w = std::min(width, cur_w);
-                    dot += (double) x[cur_h * width + cur_w] * h_[(kHeight - k_h) * kWidth + (kWidth - k_w)];
-                    sum += h_[(kHeight - k_h) * kWidth + (kWidth - k_w)];
+                    int cur_h = reflect(height, h - k_h);
+                    int cur_w = reflect(width, w - k_w);
+
+                    sum += input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
                 }
             }
-            // std::cout << dot << "/" << sum << " ";
-            y[h * width + w] = (uint8_t) (dot / sum);
+            output[h * width + w] = (uint8_t) std::max(0, std::min(255, (int)sum));
         }
-        std::cout << std::endl;
     }
 }
 void CannyEdgeDetector::GaussianFilter(const uint8_t *input, uint8_t *output, int width, int height)
 {
+    float *GaussianMatrix = NULL;
+    createFilter(&GaussianMatrix);
+    std::cout << "compled." << std::endl;
+    ConvolutionNxN(input, GaussianMatrix, output, width, height, 3);
+    delete[] GaussianMatrix;
+}
+
+void CannyEdgeDetector::DerivativeXY(const uint8_t *input, uint8_t **deltaX, uint8_t **deltaY, int order, int width, int height)
+{
+    *deltaX = new uint8_t[width * height];
+    *deltaY = new uint8_t[width * height];
+    uint8_t *temp = new uint8_t[width * height];
+
+    memcpy(temp, input, sizeof(uint8_t) * width * height);
+    memset(*deltaX, 0, sizeof(uint8_t) * width * height);
+    memset(*deltaY, 0, sizeof(uint8_t) * width * height);
+
+    float gx[] = {
+        -1, 0, 1,
+        -2, 0, 2,
+        -1, 0, 1
+    };
+    float gy[] = {
+        -1,-2,-1,
+         0, 0, 0,
+         1, 2, 1
+    };
+    for(int o = 0; o < order; o++)
+    {
+        ConvolutionNxN(temp, gx, *deltaX, width, height, 3);
+        memcpy(temp, *deltaX, sizeof(uint8_t) * width * height);
+    }
+    for(int o = 0; o < order; o++)
+    {
+        ConvolutionNxN(input, gy, *deltaY, width, height, 3);
+        memcpy(temp, *deltaY, sizeof(uint8_t) * width * height);
+    }
+
+    delete[] temp;
+}
+void CannyEdgeDetector::MagnitudeXY(const uint8_t *deltaX, const uint8_t *deltaY, uint8_t **magnitudeXY, int width, int height)
+{
     int w, h;
 
-    uint8_t temp[] = {
-        2,  4,  5,  4,  2,
-        4,  9, 12,  9,  4,
-        5, 12, 15, 12,  5,
-        4,  9, 12,  9,  4,
-        2,  4,  5,  4,  2
-    };
-    double *GaussianMatrix = new double[5 * 5];
-    memset(GaussianMatrix, 0, sizeof(double) * 5 * 5);
-    double inv_K = 159;
-    for (h = 0; h < 5; h++)
-        for (w = 0; w < 5; w++)
-            GaussianMatrix[h * width + w] = (double) temp[h * width + w] / inv_K;
-    for (h = 0; h < 5; h++)
-    {
-        for (w = 0; w < 5; w++)
-            std::cout << GaussianMatrix[h * width + w] << " ";
-        std::cout << std::endl;
-    }
-    std::cout << "GaussianMatrix...prepared? Yes" << std::endl;
-    Convolution(input, GaussianMatrix, output, 5, 5, width, height);
+    *magnitudeXY = new uint8_t[width * height];
 
-    delete[] GaussianMatrix;
+    for (h = 0; h < height; h++)
+    {
+        for (w = 0; w < width; w++)
+        {
+            (*magnitudeXY)[h * width + w] = (uint8_t)hypot(deltaX[h * width + w], deltaY[h * width + w]);
+        }
+    }
+}
+void CannyEdgeDetector::NonMaximalSuppression(const uint8_t *magnitude, const uint8_t *deltaX, const uint8_t *deltaY, int width, int height, uint8_t **nonmaxsup)
+{
+    int w, h;
+
+    *nonmaxsup = new uint8_t[width * height];
+    memset(*nonmaxsup, 0, sizeof(uint8_t) * width * height);
+
+    for (h = 1; h < height - 1; h++)
+    {
+        for (w = 1; w < width - 1; w++)
+        {
+            int pos = h * width + w;
+
+            float dir = (float)(fmod(atan2(deltaY[pos], deltaX[pos]) + 3.14, 3.14) / 3.14) * 8;
+
+            int ne = (h - 1) * width + (w + 1);
+            int sw = (h + 1) * width + (w - 1);
+
+            int nn = (h - 1) * width + w;
+            int ss = (h + 1) * width + w;
+
+            int nw = (h - 1) * width + (w - 1);
+            int se = (h + 1) * width + (w + 1);
+
+            int ee = h * width + (w + 1);
+            int ww = h * width + (w - 1);
+
+            int center = pos;
+
+            if (((dir <= 1 || dir > 7) && magnitude[center] > magnitude[ee] && magnitude[center] > magnitude[ww]) || //   0 degree
+                ((dir > 1 || dir <= 3) && magnitude[center] > magnitude[nw] && magnitude[center] > magnitude[se]) || //  45 degree
+                ((dir > 3 || dir <= 5) && magnitude[center] > magnitude[nn] && magnitude[center] > magnitude[ss]) || //  90 degree
+                ((dir > 5 || dir <= 7) && magnitude[center] > magnitude[ne] && magnitude[center] > magnitude[sw]))   // 135 degree
+                (*nonmaxsup)[center] = magnitude[center];
+            else
+                (*nonmaxsup)[center] = 0;
+        }
+    }
+    delete[] deltaX;
+    delete[] deltaY;
+    delete[] magnitude;
+}
+void CannyEdgeDetector::Hysteresis(const uint8_t *nonmaxsup, uint8_t *output, int tmin, int tmax, int width, int height)
+{
+    int w, h;
+    // memcpy(output, nonmaxsup, sizeof(uint8_t) * width * height);
+    // return;
+    uint8_t *detected_edge = new uint8_t[width * height];
+    memset(detected_edge, 0, sizeof(uint8_t) * width * height);
+    memset(output, 0, sizeof(uint8_t) * width * height);
+#if 1
+    for (h = 0; h < height; h++)
+    {
+        for (w = 0; w < width; w++)
+        {
+            int center = h * width + w;
+
+            if(nonmaxsup[center] > tmax)
+                output[center] = (uint8_t) 255;
+            else if(nonmaxsup[center] < tmin)
+                output[center] = (uint8_t) 0;
+            else
+            {
+                // output[center] = (uint8_t) 128;
+
+                bool anyHigh = false;
+                bool anyBetween = false;
+                for (int k_h = h - 1; k_h < h + 1; k_h++)
+                {
+                    for (int k_w = w - 1; k_w < w + 1; k_w++)
+                    {
+                        if(k_w < 0 || k_h < 0 || k_w > width || k_h > height)
+                            continue;
+
+                        if(output[k_h * width + k_w] > tmax)
+                        {
+                            output[h * width + w] = (uint8_t) 255;
+                            anyHigh = true;
+                            break;
+                        }
+                        else if (output[k_h * width + k_w] < tmax && output[k_h * width + k_w] >= tmin)
+                            anyBetween = true;
+                    }
+                    if(anyHigh)
+                        break;
+                }
+                if(anyBetween && !anyHigh)
+                {
+                    for (int k_h = h - 2; k_h < h + 2; k_h++)
+                    {
+                        for (int k_w = w - 2; k_w < w + 2; k_w++)
+                        {
+                            if(k_w < 0 || k_h < 0 || k_w > width || k_h > height)
+                                continue;
+                            if(output[k_h * width + k_w] > tmax)
+                            {
+                                output[h * width + w] = (uint8_t) 255;
+                                anyHigh = true;
+                                break;
+                            }
+                        }
+                        if(anyHigh)
+                            break;
+                    }
+                }
+                if(!anyHigh)
+                    output[h * width + w] = 0;
+            }
+
+        }
+    }
+#else
+    for (h = 1; h < height - 1; h++)
+    {
+        for (w = 1; w < width - 1; w++)
+        {
+            int center = h * width + w;
+
+            if (nonmaxsup[center] >= tmax && output[center] == 0)
+            { //trace edge
+                output[center] = (uint8_t)255;
+                int edges = 1;
+                detected_edge[0] = center;
+
+                do //travers the edge
+                {
+                    edges--;
+                    int t = detected_edge[edges];
+
+                    int neighbours[8];
+                    int x[8] = {1, 1, 0, -1, -1, -1, 0, 1};
+                    int y[8] = {0, 1, 1, 1, 0, -1, -1, -1};
+
+                    neighbours[0] = t - width;         // nn
+                    neighbours[1] = t + width;         // ss
+                    neighbours[2] = t + 1;             // ww
+                    neighbours[3] = t - 1;             // ee
+                    neighbours[4] = neighbours[0] + 1; // nw
+                    neighbours[5] = neighbours[0] - 1; // ne
+                    neighbours[6] = neighbours[1] + 1; // sw
+                    neighbours[7] = neighbours[1] - 1; // se
+
+                    for (int n = 0; n < 8; n++)
+                    {
+                        int pos = neighbours[n];//(h - y[n]) * width + (w + x[n]);
+                        if (nonmaxsup[pos] >= tmin && output[pos] == 0)
+                        {
+                            output[pos] = (uint8_t)255;
+                            detected_edge[edges] = pos;
+                            edges++;
+                        }
+                    }
+                } while (edges > 0);
+            }
+        }
+    }
+#endif
+    delete[] detected_edge;
+    delete[] nonmaxsup;
 }
 void CannyEdgeDetector::Canny(const uint8_t *input, uint8_t *output, int width, int height)
 {
-    int gx[] = {
-        -1, 0, 1,
-        -2, 0, 2,
-        -3, 0, 3
-    };
-    int gy[] = {
-        -1, -2, -3,
-         0,  0,  0,
-         1,  2,  3
-    };
+    uint8_t *deltaX = NULL;
+    uint8_t *deltaY = NULL;
+    uint8_t *magnitude = NULL;
+    uint8_t *nms = NULL;
 
-    // perform Gaussian Noise removal to remove extra noise
     GaussianFilter(input, output, width, height);
-}
 
+    DerivativeXY(output, &deltaX, &deltaY, 1, width, height);
+
+    MagnitudeXY(deltaX, deltaY, &magnitude, width, height);
+
+    NonMaximalSuppression(magnitude, deltaX, deltaY, width, height, &nms);
+
+    Hysteresis(nms, output, 60, 120, width, height);
+    // memcpy(output, nms, sizeof(uint8_t) * width * height);
+}
 
 // --------------------------------------------------------------
 //      U N I T    T E S T
@@ -101,19 +341,25 @@ void CannyEdgeDetector::Canny(const uint8_t *input, uint8_t *output, int width, 
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "gtest/gtest.h"
-class cannyDetector: public ::testing::TestWithParam<size_t>{};
-TEST_P(cannyDetector, ksize)
+class cannyDetector : public ::testing::TestWithParam<size_t>
 {
-    cv::Mat input = cv::imread("/Users/jinay/workspace/git-repo/LGSoft_Filters/data/apple.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+};
+TEST_P(cannyDetector, sigma_value)
+{
+    cv::Mat input = cv::imread("/home/jinay/workspace/git-repos/LGSoft_Filters/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
+    ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
 
     size_t ksize = GetParam();
-    CannyEdgeDetector c(ksize);
+
+    CannyEdgeDetector c(ksize, 0.4);
     c.Canny(input.data, output.data, input.cols, input.rows);
-    
+
     // reference algorithm results
     cv::Mat ocvResult;
-    cv::GaussianBlur(input, ocvResult, cv::Size(ksize, ksize), 0);
+    cv::GaussianBlur(input, ocvResult, cv::Size(ksize,ksize), 0.4);
+    cv::Canny(ocvResult, ocvResult, 60, 120, ksize);
 
     // finding difference between reference and target algorithms, to evaluate.
     cv::Mat diffImage;
@@ -126,8 +372,97 @@ TEST_P(cannyDetector, ksize)
     cv::imshow("diffImage", diffImage);
     cv::waitKey(0);
 #endif
-    
+
     EXPECT_EQ(diffCount, 0);
 }
-INSTANTIATE_TEST_CASE_P(Features, cannyDetector, ::testing::Values(5));
+INSTANTIATE_TEST_CASE_P(Features, cannyDetector, ::testing::Values(3));
 #endif
+
+
+
+// void CannyEdgeDetector::createGaussianMatrix1D(float sigma, float **kernel, int *windowsize)
+// {
+//     int i, center;
+//     float x, fx, sum = 0.0;
+
+//     *windowsize = 1 + 2 * ceil(2.5 * sigma);
+//     center = (*windowsize) / 2;
+
+//     if ((*kernel = (float *)calloc((*windowsize), sizeof(float))) == NULL)
+//     {
+//         std::cerr << "Error callocing the gaussian kernel ahhay." << std::endl;
+//         return;
+//     }
+
+//     for (i = 0; i < (*windowsize); i++)
+//     {
+//         x = (float)(i - center);
+//         fx = pow(2.71828, -0.5 * x * x / (sigma * sigma)) / (sigma * sqrt(6.2831853));
+//         (*kernel)[i] = fx;
+//         sum += fx;
+//     }
+
+//     for (i = 0; i < (*windowsize); i++)
+//     {
+//         if (sum != 0)
+//             (*kernel)[i] /= sum;
+//     }
+// #ifndef _NDEBUG
+//     std::cout << "The filter coefficients are:" << std::endl;
+//     for (i = 0; i < (*windowsize); i++)
+//         std::cout << "kernel[" << i << "] = " << (*kernel)[i] << std::endl;
+// #endif
+// }
+// void CannyEdgeDetector::GaussianFilter(const uint8_t *input, uint8_t *output, int width, int height)
+// {
+//     // int w, h;
+
+//     float *GaussianMatrix = NULL;
+//     createFilter(sigma, &GaussianMatrix, ksize);
+//     ConvolutionNxN(input, GaussianMatrix, output, width, height, 3);
+//     delete[] GaussianMatrix;
+//     // float *temp = new float[width * height];
+//     // memset(temp, 0, sizeof(float) * width * height);
+
+//     // //  x - direction
+//     // for (h = 0; h < height; h++)
+//     // {
+//     //     for (w = 0; w < width; w++)
+//     //     {
+//     //         float dot = 0.0;
+//     //         float sum = 0.0;
+//     //         int ww = 0;
+//     //         for (ww = -center; ww <= center; ww++)
+//     //         {
+//     //             if ((w + ww) >= 0 && (w + ww) < width)
+//     //             {
+//     //                 dot += (float)input[h * width + (w + ww)] * GaussianMatrix[center + ww];
+//     //                 sum += (float)GaussianMatrix[center + ww];
+//     //             }
+//     //         }
+//     //         temp[h * width + w] = dot;
+//     //     }
+//     // }
+
+//     // // y - direction
+//     // for (w = 0; w < width; w++)
+//     // {
+//     //     for (h = 0; h < height; h++)
+//     //     {
+//     //         float dot = 0.0;
+//     //         float sum = 0.0;
+//     //         int hh = 0;
+//     //         for (hh = -center; hh <= center; hh++)
+//     //         {
+//     //             if ((h + hh) >= 0 && (h + hh) < height)
+//     //             {
+//     //                 dot += (float)temp[(h + hh) * width + w] * GaussianMatrix[center + hh];
+//     //                 sum += (float)GaussianMatrix[center + hh];
+//     //             }
+//     //         }
+//     //         output[h * width + w] = (uint8_t)(dot);
+//     //     }
+//     // }
+//     // delete[] temp;
+//     // delete[] GaussianMatrix;
+// }

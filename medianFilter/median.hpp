@@ -12,12 +12,14 @@
 
 #include <iostream>
 #include <stdint.h>
+#include <string.h>
+#include <algorithm>
 
 class MedianFilter
 {
     private:
-        size_t kernel[2];
-    
+        size_t ksize;
+        int reflect(int M, int x);
     public:
         MedianFilter();
         MedianFilter(size_t ksize);

@@ -1,6 +1,6 @@
 /**
  *  median.cpp
- *   
+ *
  *  Contains method for MedianFilter Class and Implementation for Median Filter
  *  (File also included Unit Test _disabled with compiler switch UNIT_TEST)
  *
@@ -12,43 +12,47 @@
 
 MedianFilter::MedianFilter()
 {
-    kernel[0] = 3;
-    kernel[1] = 3;
+    ksize = 3;
 }
 
-MedianFilter::MedianFilter(size_t ksize)
+MedianFilter::MedianFilter(size_t ksize_)
 {
-    kernel[0] = ksize;
-    kernel[1] = ksize;
+    ksize = ksize_;
 }
-
+int MedianFilter::reflect(int M, int x)
+{
+    if(x < 0)
+        return -x - 1;
+    if(x >= M)
+        return 2*M - x - 1;
+   return x;
+}
 int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int height)
 {
     int w, h;
-    int size = kernel[0] * kernel[1];
-    int kH = kernel[0] / 2;
-    int kW = kernel[1] / 2;
+    int size = ksize * ksize;
+    int kH = ksize / 2;
+    int kW = ksize / 2;
     int k_h, k_w;
 
     uint32_t* avg = new uint32_t[size];
-    
+
     for (h = 0; h < height; h++)
     {
         for (w = 0; w < width; w++)
         {
             memset(avg, 0, sizeof(uint32_t) * size);
+
             for (k_h = -kH; k_h <= kH; k_h++)
             {
                 for (k_w = -kW; k_w <= kW; k_w++)
                 {
-                    int cur_w = std::max(0, w + k_w);
-                    int cur_h = std::max(0, h + k_h);
-                    cur_w = std::min(width, cur_w);
-                    cur_h = std::min(height, cur_h);
-                    avg[(kH + k_h) * kernel[0] + (kW + k_w)] = (uint32_t) input[cur_h * width + cur_w];
+                    int cur_h = reflect(height, h - k_h);
+                    int cur_w = reflect(width, w - k_w);
+
+                    avg[(kH + k_h) * ksize + (kW + k_w)] = (uint32_t) input[cur_h * width + cur_w];
                 }
             }
-            
             std::sort(&avg[0], &avg[size]);
             uint32_t median = 0;
             if (size % 2)
@@ -73,9 +77,9 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
 #include <opencv2/highgui/highgui.hpp>
 #include "gtest/gtest.h"
 class medianFilter: public ::testing::TestWithParam<size_t>{};
-TEST_P(medianFilter, DISABLED_ksize)
+TEST_P(medianFilter, ksize)
 {
-    cv::Mat input = cv::imread("/Users/jinay/workspace/git-repo/LGSoft_Filters/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    cv::Mat input = cv::imread("/home/jinay/workspace/git-repos/LGSoft_Filters/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
     ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;;
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
@@ -100,8 +104,8 @@ TEST_P(medianFilter, DISABLED_ksize)
     cv::imshow("diffImage", diffImage);
     cv::waitKey(0);
 #endif
-    
+
     EXPECT_EQ(diffCount, 0);
 }
-INSTANTIATE_TEST_CASE_P(Filters, medianFilter, ::testing::Values(15));
-#endif 
+INSTANTIATE_TEST_CASE_P(Filters, medianFilter, ::testing::Values(3));
+#endif

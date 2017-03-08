@@ -27,6 +27,7 @@ option(BUILD_TEST "Build Unit Test applications." ON)
 
 set(SOURCE  ${CMAKE_CURRENT_SOURCE_DIR}/medianFilter/median.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/cannyEdgeDetector/canny.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/laplaceFilter/laplace.cpp
 )
 
 if(BUILD_TEST)
@@ -38,10 +39,11 @@ if(BUILD_TEST)
     # add compiler define to code
     add_definitions(-DUNIT_TEST)
     add_executable(testApp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${SOURCE})
-    target_link_libraries(testApp ${OpenCV_LIBS} pthread)
+    target_link_libraries(testApp ${OpenCV_LIBS} pthread m)
     install(TARGETS testApp DESTINATION bin)
 else()
     add_library(filter SHARED ${SOURCE})
+    target_link_libraries(filter m)
     install(TARGETS filter DESTINATION lib)
 endif()
 
