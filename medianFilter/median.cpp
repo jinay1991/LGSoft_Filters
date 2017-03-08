@@ -73,7 +73,7 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
 #include <opencv2/highgui/highgui.hpp>
 #include "gtest/gtest.h"
 class medianFilter: public ::testing::TestWithParam<size_t>{};
-TEST_P(medianFilter, ksize)
+TEST_P(medianFilter, DISABLED_ksize)
 {
     cv::Mat input = cv::imread("/Users/jinay/workspace/git-repo/LGSoft_Filters/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
