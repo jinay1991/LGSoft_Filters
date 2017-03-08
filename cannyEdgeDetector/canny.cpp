@@ -33,15 +33,15 @@ CannyEdgeDetector::CannyEdgeDetector(size_t ksize_, float sigma_)
 void CannyEdgeDetector::createFilter(float **kernel)
 {
     // set standard deviation to 1.0
-    if(sigma == 0)
+    if (sigma == 0)
         sigma = 1.0;
-    if(ksize == 0)
-        ksize = 2 * (int)(2*sigma) + 3;
+    if (ksize == 0)
+        ksize = 2 * (int)(2 * sigma) + 3;
     float r, s = 2.0 * sigma * sigma;
 
     std::cout << "ksize: " << ksize << " sigma: " << sigma << std::endl;
 
-    if(*kernel == NULL)
+    if (*kernel == NULL)
         *kernel = new float[ksize * ksize];
 
     // sum is for normalization
@@ -51,29 +51,28 @@ void CannyEdgeDetector::createFilter(float **kernel)
     // generate NxN kernel
     for (int h = -kH; h <= kH; h++)
     {
-        for(int w = -kW; w <= kW; w++)
+        for (int w = -kW; w <= kW; w++)
         {
             r = sqrt(w * w + h * h);
 
-            (*kernel)[(h + kH) * ksize + (w + kW)] = (exp(-(r*r)/s))/(M_PI * s);
+            (*kernel)[(h + kH) * ksize + (w + kW)] = (exp(-(r * r) / s)) / (M_PI * s);
             sum += (*kernel)[(h + kH) * ksize + (w + kW)];
         }
     }
 
     // normalize the Kernel
-    for(int h = 0; h < (int)ksize; ++h)
-        for(int w = 0; w < (int)ksize; ++w)
+    for (int h = 0; h < (int)ksize; ++h)
+        for (int w = 0; w < (int)ksize; ++w)
             (*kernel)[h * ksize + w] /= sum;
-
 }
 
 int CannyEdgeDetector::reflect(int M, int x)
 {
-    if(x < 0)
+    if (x < 0)
         return -x - 1;
-    if(x >= M)
-        return 2*M - x - 1;
-   return x;
+    if (x >= M)
+        return 2 * M - x - 1;
+    return x;
 }
 void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel, uint8_t *output, int width, int height, int ksize)
 {
@@ -94,7 +93,7 @@ void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel
                     sum += input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
                 }
             }
-            output[h * width + w] = (uint8_t) std::max(0, std::min(255, (int)sum));
+            output[h * width + w] = (uint8_t)std::max(0, std::min(255, (int)sum));
         }
     }
 }
@@ -120,19 +119,18 @@ void CannyEdgeDetector::DerivativeXY(const uint8_t *input, uint8_t **deltaX, uin
     float gx[] = {
         -1, 0, 1,
         -2, 0, 2,
-        -1, 0, 1
-    };
+        -1, 0, 1};
     float gy[] = {
-        -1,-2,-1,
-         0, 0, 0,
-         1, 2, 1
-    };
-    for(int o = 0; o < order; o++)
+        -1, -2, -1,
+        0, 0, 0,
+        1, 2, 1};
+    for (int o = 0; o < order; o++)
     {
         ConvolutionNxN(temp, gx, *deltaX, width, height, 3);
         memcpy(temp, *deltaX, sizeof(uint8_t) * width * height);
     }
-    for(int o = 0; o < order; o++)
+    memcpy(temp, input, sizeof(uint8_t) * width * height);
+    for (int o = 0; o < order; o++)
     {
         ConvolutionNxN(input, gy, *deltaY, width, height, 3);
         memcpy(temp, *deltaY, sizeof(uint8_t) * width * height);
@@ -196,25 +194,23 @@ void CannyEdgeDetector::NonMaximalSuppression(const uint8_t *magnitude, const ui
     delete[] deltaY;
     delete[] magnitude;
 }
-void CannyEdgeDetector::Hysteresis(const uint8_t *nonmaxsup, uint8_t *output, int tmin, int tmax, int width, int height)
+void CannyEdgeDetector::DoubleThresholding(const uint8_t *nonmaxsup, uint8_t *output, int tmin, int tmax, int width, int height)
 {
     int w, h;
-    // memcpy(output, nonmaxsup, sizeof(uint8_t) * width * height);
-    // return;
     uint8_t *detected_edge = new uint8_t[width * height];
     memset(detected_edge, 0, sizeof(uint8_t) * width * height);
     memset(output, 0, sizeof(uint8_t) * width * height);
-#if 1
+
     for (h = 0; h < height; h++)
     {
         for (w = 0; w < width; w++)
         {
             int center = h * width + w;
 
-            if(nonmaxsup[center] > tmax)
-                output[center] = (uint8_t) 255;
-            else if(nonmaxsup[center] < tmin)
-                output[center] = (uint8_t) 0;
+            if (nonmaxsup[center] > tmax)
+                output[center] = (uint8_t)255;
+            else if (nonmaxsup[center] < tmin)
+                output[center] = (uint8_t)0;
             else
             {
                 // output[center] = (uint8_t) 128;
@@ -225,96 +221,50 @@ void CannyEdgeDetector::Hysteresis(const uint8_t *nonmaxsup, uint8_t *output, in
                 {
                     for (int k_w = w - 1; k_w < w + 1; k_w++)
                     {
-                        if(k_w < 0 || k_h < 0 || k_w > width || k_h > height)
+                        if (k_w < 0 || k_h < 0 || k_w > width || k_h > height)
                             continue;
 
-                        if(output[k_h * width + k_w] > tmax)
+                        if (output[k_h * width + k_w] > tmax)
                         {
-                            output[h * width + w] = (uint8_t) 255;
+                            output[h * width + w] = (uint8_t)255;
                             anyHigh = true;
                             break;
                         }
                         else if (output[k_h * width + k_w] < tmax && output[k_h * width + k_w] >= tmin)
                             anyBetween = true;
                     }
-                    if(anyHigh)
+                    if (anyHigh)
                         break;
                 }
-                if(anyBetween && !anyHigh)
+                if (anyBetween && !anyHigh)
                 {
                     for (int k_h = h - 2; k_h < h + 2; k_h++)
                     {
                         for (int k_w = w - 2; k_w < w + 2; k_w++)
                         {
-                            if(k_w < 0 || k_h < 0 || k_w > width || k_h > height)
+                            if (k_w < 0 || k_h < 0 || k_w > width || k_h > height)
                                 continue;
-                            if(output[k_h * width + k_w] > tmax)
+                            if (output[k_h * width + k_w] > tmax)
                             {
-                                output[h * width + w] = (uint8_t) 255;
+                                output[h * width + w] = (uint8_t)255;
                                 anyHigh = true;
                                 break;
                             }
                         }
-                        if(anyHigh)
+                        if (anyHigh)
                             break;
                     }
                 }
-                if(!anyHigh)
+                if (!anyHigh)
                     output[h * width + w] = 0;
             }
-
         }
     }
-#else
-    for (h = 1; h < height - 1; h++)
-    {
-        for (w = 1; w < width - 1; w++)
-        {
-            int center = h * width + w;
 
-            if (nonmaxsup[center] >= tmax && output[center] == 0)
-            { //trace edge
-                output[center] = (uint8_t)255;
-                int edges = 1;
-                detected_edge[0] = center;
-
-                do //travers the edge
-                {
-                    edges--;
-                    int t = detected_edge[edges];
-
-                    int neighbours[8];
-                    int x[8] = {1, 1, 0, -1, -1, -1, 0, 1};
-                    int y[8] = {0, 1, 1, 1, 0, -1, -1, -1};
-
-                    neighbours[0] = t - width;         // nn
-                    neighbours[1] = t + width;         // ss
-                    neighbours[2] = t + 1;             // ww
-                    neighbours[3] = t - 1;             // ee
-                    neighbours[4] = neighbours[0] + 1; // nw
-                    neighbours[5] = neighbours[0] - 1; // ne
-                    neighbours[6] = neighbours[1] + 1; // sw
-                    neighbours[7] = neighbours[1] - 1; // se
-
-                    for (int n = 0; n < 8; n++)
-                    {
-                        int pos = neighbours[n];//(h - y[n]) * width + (w + x[n]);
-                        if (nonmaxsup[pos] >= tmin && output[pos] == 0)
-                        {
-                            output[pos] = (uint8_t)255;
-                            detected_edge[edges] = pos;
-                            edges++;
-                        }
-                    }
-                } while (edges > 0);
-            }
-        }
-    }
-#endif
     delete[] detected_edge;
     delete[] nonmaxsup;
 }
-void CannyEdgeDetector::Canny(const uint8_t *input, uint8_t *output, int width, int height)
+int CannyEdgeDetector::Canny(const uint8_t *input, uint8_t *output, int width, int height)
 {
     uint8_t *deltaX = NULL;
     uint8_t *deltaY = NULL;
@@ -329,8 +279,9 @@ void CannyEdgeDetector::Canny(const uint8_t *input, uint8_t *output, int width, 
 
     NonMaximalSuppression(magnitude, deltaX, deltaY, width, height, &nms);
 
-    Hysteresis(nms, output, 60, 120, width, height);
-    // memcpy(output, nms, sizeof(uint8_t) * width * height);
+    DoubleThresholding(nms, output, 60, 120, width, height);
+
+    return 0;
 }
 
 // --------------------------------------------------------------
@@ -346,7 +297,11 @@ class cannyDetector : public ::testing::TestWithParam<size_t>
 };
 TEST_P(cannyDetector, sigma_value)
 {
-    cv::Mat input = cv::imread("/home/jinay/workspace/git-repos/LGSoft_Filters/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    char cwd[1024];
+    std::string dirpath;
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
+        dirpath = std::string(cwd);
+    cv::Mat input = cv::imread(dirpath + "/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
     ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
@@ -354,31 +309,37 @@ TEST_P(cannyDetector, sigma_value)
     size_t ksize = GetParam();
 
     CannyEdgeDetector c(ksize, 0.4);
-    c.Canny(input.data, output.data, input.cols, input.rows);
+    int result = c.Canny(input.data, output.data, input.cols, input.rows);
 
+    EXPECT_EQ(result, 0);
+
+#ifdef COMPARE_RESULTS
     // reference algorithm results
     cv::Mat ocvResult;
-    cv::GaussianBlur(input, ocvResult, cv::Size(ksize,ksize), 0.4);
+    cv::GaussianBlur(input, ocvResult, cv::Size(ksize, ksize), 0.4);
     cv::Canny(ocvResult, ocvResult, 60, 120, ksize);
 
     // finding difference between reference and target algorithms, to evaluate.
     cv::Mat diffImage;
     cv::compare(output, ocvResult, diffImage, cv::CMP_NE);
     int diffCount = cv::countNonZero(diffImage);
+    EXPECT_EQ(diffCount, 0);
+    if(diffCount > 0)
+    {
+        cv::imshow("refImage", ocvResult);
+        cv::imshow("diffImage", diffImage);
+    }
+#endif
 #ifndef _NDEBUG
     cv::imshow("inImage", input);
-    cv::imshow("refImage", ocvResult);
     cv::imshow("outImage", output);
-    cv::imshow("diffImage", diffImage);
+    
     cv::waitKey(0);
 #endif
 
-    EXPECT_EQ(diffCount, 0);
 }
 INSTANTIATE_TEST_CASE_P(Features, cannyDetector, ::testing::Values(3));
 #endif
-
-
 
 // void CannyEdgeDetector::createGaussianMatrix1D(float sigma, float **kernel, int *windowsize)
 // {

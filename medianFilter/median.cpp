@@ -21,11 +21,11 @@ MedianFilter::MedianFilter(size_t ksize_)
 }
 int MedianFilter::reflect(int M, int x)
 {
-    if(x < 0)
+    if (x < 0)
         return -x - 1;
-    if(x >= M)
-        return 2*M - x - 1;
-   return x;
+    if (x >= M)
+        return 2 * M - x - 1;
+    return x;
 }
 int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int height)
 {
@@ -35,7 +35,7 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
     int kW = ksize / 2;
     int k_h, k_w;
 
-    uint32_t* avg = new uint32_t[size];
+    uint32_t *avg = new uint32_t[size];
 
     for (h = 0; h < height; h++)
     {
@@ -50,7 +50,7 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
                     int cur_h = reflect(height, h - k_h);
                     int cur_w = reflect(width, w - k_w);
 
-                    avg[(kH + k_h) * ksize + (kW + k_w)] = (uint32_t) input[cur_h * width + cur_w];
+                    avg[(kH + k_h) * ksize + (kW + k_w)] = (uint32_t)input[cur_h * width + cur_w];
                 }
             }
             std::sort(&avg[0], &avg[size]);
@@ -58,15 +58,13 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
             if (size % 2)
                 median = avg[size / 2];
             else
-                median = (avg[(size/2) - 1] + avg[size/2]) / 2;
-            output[h * width + w] = (uint8_t) median;
+                median = (avg[(size / 2) - 1] + avg[size / 2]) / 2;
+            output[h * width + w] = (uint8_t)median;
         }
     }
     delete[] avg;
     return 0;
 }
-
-
 
 // --------------------------------------------------------------
 //      U N I T    T E S T
@@ -76,19 +74,29 @@ int MedianFilter::Median(const uint8_t *input, uint8_t *output, int width, int h
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "gtest/gtest.h"
-class medianFilter: public ::testing::TestWithParam<size_t>{};
+class medianFilter : public ::testing::TestWithParam<size_t>
+{
+};
 TEST_P(medianFilter, ksize)
 {
-    cv::Mat input = cv::imread("/home/jinay/workspace/git-repos/LGSoft_Filters/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
+    char cwd[1024];
+    std::string dirpath;
+    if (getcwd(cwd, sizeof(cwd)) != NULL)
+        dirpath = std::string(cwd);
+    cv::Mat input = cv::imread(dirpath + "/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
-    ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;;
+    ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;
+    ;
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
     size_t ksize = GetParam();
 
     // target algorithm results
     MedianFilter m(ksize);
-    m.Median(input.data, output.data, input.cols, input.rows);
+    int result = m.Median(input.data, output.data, input.cols, input.rows);
+    
+    EXPECT_EQ(result, 0);
 
+#ifdef COMPARE_RESULTS
     // reference algorithm results
     cv::Mat ocvResult;
     cv::medianBlur(input, ocvResult, ksize);
@@ -97,15 +105,20 @@ TEST_P(medianFilter, ksize)
     cv::Mat diffImage;
     cv::compare(output, ocvResult, diffImage, cv::CMP_NE);
     int diffCount = cv::countNonZero(diffImage);
+    EXPECT_EQ(diffCount, 0);
+    if(diffCount > 0)
+    {
+        cv::imshow("refImage", ocvResult);
+        cv::imshow("diffImage", diffImage);
+    }
+#endif
 #ifndef _NDEBUG
     cv::imshow("inImage", input);
-    cv::imshow("refImage", ocvResult);
     cv::imshow("outImage", output);
-    cv::imshow("diffImage", diffImage);
+    
     cv::waitKey(0);
 #endif
 
-    EXPECT_EQ(diffCount, 0);
 }
 INSTANTIATE_TEST_CASE_P(Filters, medianFilter, ::testing::Values(3));
 #endif

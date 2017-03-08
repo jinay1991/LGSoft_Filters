@@ -31,6 +31,8 @@ set(SOURCE  ${CMAKE_CURRENT_SOURCE_DIR}/medianFilter/median.cpp
 )
 
 if(BUILD_TEST)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/data/apple.jpg ${CMAKE_CURRENT_BINARY_DIR}/data/apple.jpg COPYONLY)
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/data/lena.jpg ${CMAKE_CURRENT_BINARY_DIR}/data/lena.jpg COPYONLY)
     # find dependent packages
     find_package(OpenCV REQUIRED)
     include_directories(${OpenCV_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/)
@@ -38,6 +40,9 @@ if(BUILD_TEST)
     set(SOURCE ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
     # add compiler define to code
     add_definitions(-DUNIT_TEST)
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        add_definitions(-DCOMPARE_RESULTS)
+    endif()
     add_executable(testApp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${SOURCE})
     target_link_libraries(testApp ${OpenCV_LIBS} pthread m)
     install(TARGETS testApp DESTINATION bin)
