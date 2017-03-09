@@ -15,6 +15,11 @@ InverseFilter::InverseFilter()
     ksize = 3;
     sigma = 0.3;
 }
+InverseFilter::InverseFilter(size_t ksize_, float sigma_)
+{
+    ksize = ksize_;
+    sigma = sigma_;
+}
 /* gaussianFilter:
   * http://www.songho.ca/dsp/cannyedge/cannyedge.html
   * determine size of kernel (odd #)
@@ -135,8 +140,10 @@ int InverseFilter::Inverse(const uint8_t *input, uint8_t *output, int width, int
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "gtest/gtest.h"
-
-TEST(InverseFilter, ksize)
+class inverseFilter : public ::testing::TestWithParam<size_t>
+{
+};
+TEST_P(inverseFilter, ksize)
 {
     char cwd[1024];
     std::string dirpath;
@@ -147,8 +154,9 @@ TEST(InverseFilter, ksize)
     ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
 
+    size_t ksize = GetParam();
     // target algorithm results
-    InverseFilter invl;
+    InverseFilter invl(ksize, 0.4);
     invl.GaussianFilter(input.data, output.data, input.cols, input.rows);
     cv::Mat output2 = cv::Mat::zeros(input.size(), CV_8UC1);
 
@@ -177,4 +185,5 @@ TEST(InverseFilter, ksize)
 #endif
 
 }
+INSTANTIATE_TEST_CASE_P(Filters, inverseFilter, ::testing::Values(3));
 #endif

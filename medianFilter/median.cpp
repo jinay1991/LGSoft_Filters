@@ -105,9 +105,9 @@ TEST_P(medianFilter, ksize)
     cv::compare(output, ocvResult, diffImage, cv::CMP_NE);
     int diffCount = cv::countNonZero(diffImage);
     EXPECT_EQ(diffCount, 0);
+    cv::imshow("refImage", ocvResult);
     if(diffCount > 0)
     {
-        cv::imshow("refImage", ocvResult);
         cv::imshow("diffImage", diffImage);
     }
 #endif

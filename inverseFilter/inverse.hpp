@@ -28,6 +28,7 @@ class InverseFilter
         void createFilter(float **kernel);
     public:
         InverseFilter();
+        InverseFilter(size_t ksize_, float sigma_);
         void GaussianFilter(const uint8_t *input, uint8_t *output, int width, int height);
         int Laplace(const uint8_t *input, uint8_t *output, int width, int height);
         int Inverse(const uint8_t *input, uint8_t *output, int width, int height);
