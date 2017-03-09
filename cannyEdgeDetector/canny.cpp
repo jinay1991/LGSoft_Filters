@@ -13,11 +13,15 @@ CannyEdgeDetector::CannyEdgeDetector()
 {
     sigma = 0.4f;
     ksize = 3;
+    tlow = 100;
+    thigh = 200;
 }
-CannyEdgeDetector::CannyEdgeDetector(size_t ksize_, float sigma_)
+CannyEdgeDetector::CannyEdgeDetector(size_t ksize_, float sigma_, int tlow_, int thigh_)
 {
     sigma = sigma_;
     ksize = ksize_;
+    tlow = tlow_;
+    thigh = thigh_;
 }
 /* gaussianFilter:
   * http://www.songho.ca/dsp/cannyedge/cannyedge.html
@@ -82,6 +86,7 @@ void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel
     {
         for (int w = 0; w < width; w++)
         {
+            float dot = 0;
             float sum = 0;
             for (int k_h = -kH; k_h <= kH; k_h++)
             {
@@ -90,10 +95,11 @@ void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel
                     int cur_h = reflect(height, h - k_h);
                     int cur_w = reflect(width, w - k_w);
 
-                    sum += input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
+                    dot += input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
+                    sum += kernel[(k_h + kH) * ksize + (k_w + kW)];
                 }
             }
-            output[h * width + w] = (uint8_t)std::max(0, std::min(255, (int)sum));
+            output[h * width + w] = (uint8_t)std::max(0, std::min(255, (int)(dot/((sum==0)?1:sum))));
         }
     }
 }
@@ -101,7 +107,6 @@ void CannyEdgeDetector::GaussianFilter(const uint8_t *input, uint8_t *output, in
 {
     float *GaussianMatrix = NULL;
     createFilter(&GaussianMatrix);
-    std::cout << "compled." << std::endl;
     ConvolutionNxN(input, GaussianMatrix, output, width, height, 3);
     delete[] GaussianMatrix;
 }
@@ -279,7 +284,7 @@ int CannyEdgeDetector::Canny(const uint8_t *input, uint8_t *output, int width, i
 
     NonMaximalSuppression(magnitude, deltaX, deltaY, width, height, &nms);
 
-    DoubleThresholding(nms, output, 60, 120, width, height);
+    DoubleThresholding(nms, output, tlow, thigh, width, height);
 
     return 0;
 }
@@ -295,7 +300,7 @@ int CannyEdgeDetector::Canny(const uint8_t *input, uint8_t *output, int width, i
 class cannyDetector : public ::testing::TestWithParam<size_t>
 {
 };
-TEST_P(cannyDetector, sigma_value)
+TEST_P(cannyDetector, ksize)
 {
     char cwd[1024];
     std::string dirpath;
@@ -307,8 +312,9 @@ TEST_P(cannyDetector, sigma_value)
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
 
     size_t ksize = GetParam();
-
-    CannyEdgeDetector c(ksize, 0.4);
+    int tlow = 60;
+    int thigh = 120;
+    CannyEdgeDetector c(ksize, 0.4, tlow, thigh);
     int result = c.Canny(input.data, output.data, input.cols, input.rows);
 
     EXPECT_EQ(result, 0);
@@ -317,7 +323,7 @@ TEST_P(cannyDetector, sigma_value)
     // reference algorithm results
     cv::Mat ocvResult;
     cv::GaussianBlur(input, ocvResult, cv::Size(ksize, ksize), 0.4);
-    cv::Canny(ocvResult, ocvResult, 60, 120, ksize);
+    cv::Canny(ocvResult, ocvResult, tlow, thigh, ksize);
 
     // finding difference between reference and target algorithms, to evaluate.
     cv::Mat diffImage;

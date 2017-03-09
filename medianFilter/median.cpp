@@ -86,7 +86,6 @@ TEST_P(medianFilter, ksize)
     cv::Mat input = cv::imread(dirpath + "/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
     ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;
-    ;
     cv::Mat output = cv::Mat::zeros(input.size(), CV_8UC1);
     size_t ksize = GetParam();
 

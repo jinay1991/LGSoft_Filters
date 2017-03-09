@@ -36,6 +36,7 @@ void LaplaceFilter::ConvolutionNxN(const uint8_t *input, const int *kernel, uint
     {
         for (int w = 0; w < width; w++)
         {
+            int dot = 0;
             int sum = 0;
             for (int k_h = -kH; k_h <= kH; k_h++)
             {
@@ -44,10 +45,11 @@ void LaplaceFilter::ConvolutionNxN(const uint8_t *input, const int *kernel, uint
                     int cur_h = reflect(height, h - k_h);
                     int cur_w = reflect(width, w - k_w);
 
-                    sum += input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
+                    dot += input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
+                    sum += kernel[(k_h + kH) * ksize + (k_w + kW)];
                 }
             }
-            output[h * width + w] = (uint8_t)std::max(0, std::min(255, (int)sum));
+            output[h * width + w] = (uint8_t) std::max(0, std::min(255, (int)dot/((sum==0)?1:sum)));
         }
     }
 }
@@ -130,6 +132,7 @@ TEST_P(laplaceFilter, ksize)
     std::string dirpath;
     if (getcwd(cwd, sizeof(cwd)) != NULL)
         dirpath = std::string(cwd);
+    std::cout << dirpath << std::endl;
     cv::Mat input = cv::imread(dirpath + "/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
     ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;

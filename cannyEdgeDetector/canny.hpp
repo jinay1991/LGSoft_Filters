@@ -21,6 +21,9 @@ class CannyEdgeDetector
     private:
         size_t ksize;
         float sigma;
+        int tlow;
+        int thigh;
+
         void createFilter(float **kernel);
         int reflect(int M, int x);
         void ConvolutionNxN(const uint8_t *input, const float *kernel, uint8_t *output, int width, int height, int ksize);
@@ -32,7 +35,7 @@ class CannyEdgeDetector
 
     public:
         CannyEdgeDetector();
-        CannyEdgeDetector(size_t ksize, float s);
+        CannyEdgeDetector(size_t ksize, float s, int tlow, int thigh);
 
         int Canny(const uint8_t *input, uint8_t *output, int width, int height);
 };
