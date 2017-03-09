@@ -28,10 +28,12 @@ option(BUILD_TEST "Build Unit Test applications." ON)
 set(MEDIAN_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/medianFilter/median.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
 set(CANNY_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/cannyEdgeDetector/canny.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
 set(LAPLACE_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/laplaceFilter/laplace.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
+set(INVERSE_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/inverseFilter/inverse.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
 
 set(SOURCE  ${CMAKE_CURRENT_SOURCE_DIR}/medianFilter/median.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/cannyEdgeDetector/canny.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/laplaceFilter/laplace.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/inverseFilter/inverse.cpp
 )
 
 if(BUILD_TEST)
@@ -52,10 +54,12 @@ if(BUILD_TEST)
         add_executable(testCanny ${CANNY_UNIT})
         add_executable(testLaplace ${LAPLACE_UNIT})
         add_executable(testMedian ${MEDIAN_UNIT})
+        add_executable(testInverse ${INVERSE_UNIT})
         target_link_libraries(testCanny ${OpenCV_LIBS} pthread m)
         target_link_libraries(testLaplace ${OpenCV_LIBS} pthread m)
         target_link_libraries(testMedian  ${OpenCV_LIBS} pthread m)
-        set(${EXE} testCanny testLaplace testMedian)
+        target_link_libraries(testInverse  ${OpenCV_LIBS} pthread m)
+        set(${EXE} testCanny testLaplace testMedian testInverse)
     elseif()
         add_executable(testApp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${SOURCE})
         target_link_libraries(testApp ${OpenCV_LIBS} pthread m)

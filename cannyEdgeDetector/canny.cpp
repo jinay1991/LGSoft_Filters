@@ -68,6 +68,18 @@ void CannyEdgeDetector::createFilter(float **kernel)
     for (int h = 0; h < (int)ksize; ++h)
         for (int w = 0; w < (int)ksize; ++w)
             (*kernel)[h * ksize + w] /= sum;
+
+#if _NDEBUG
+    std::cout << "Gaussian Filter: " << std::endl;
+    for (int h = 0; h < (int)ksize; ++h)
+    {
+        for (int w = 0; w < (int)ksize; ++w)
+        {
+            std::cout << (*kernel)[h * ksize + w] << " ";
+        }
+        std::cout << std::endl;
+    }
+#endif
 }
 
 int CannyEdgeDetector::reflect(int M, int x)
@@ -78,10 +90,10 @@ int CannyEdgeDetector::reflect(int M, int x)
         return 2 * M - x - 1;
     return x;
 }
-void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel, uint8_t *output, int width, int height, int ksize)
+void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel, uint8_t *output, int width, int height, int ksize_)
 {
-    int kH = ksize / 2;
-    int kW = ksize / 2;
+    int kH = ksize_ / 2;
+    int kW = ksize_ / 2;
     for (int h = 0; h < height; h++)
     {
         for (int w = 0; w < width; w++)
@@ -95,11 +107,11 @@ void CannyEdgeDetector::ConvolutionNxN(const uint8_t *input, const float *kernel
                     int cur_h = reflect(height, h - k_h);
                     int cur_w = reflect(width, w - k_w);
 
-                    dot += input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
+                    dot += (float)input[cur_h * width + cur_w] * kernel[(k_h + kH) * ksize + (k_w + kW)];
                     sum += kernel[(k_h + kH) * ksize + (k_w + kW)];
                 }
             }
-            output[h * width + w] = (uint8_t)std::max(0, std::min(255, (int)(dot/((sum==0)?1:sum))));
+            output[h * width + w] = (uint8_t)std::max(0, std::min(255, (int)dot));
         }
     }
 }
@@ -108,6 +120,7 @@ void CannyEdgeDetector::GaussianFilter(const uint8_t *input, uint8_t *output, in
     float *GaussianMatrix = NULL;
     createFilter(&GaussianMatrix);
     ConvolutionNxN(input, GaussianMatrix, output, width, height, 3);
+    
     delete[] GaussianMatrix;
 }
 

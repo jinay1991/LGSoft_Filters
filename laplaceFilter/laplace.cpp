@@ -132,7 +132,6 @@ TEST_P(laplaceFilter, ksize)
     std::string dirpath;
     if (getcwd(cwd, sizeof(cwd)) != NULL)
         dirpath = std::string(cwd);
-    std::cout << dirpath << std::endl;
     cv::Mat input = cv::imread(dirpath + "/data/lena.jpg", CV_LOAD_IMAGE_GRAYSCALE);
     ASSERT_NE(input.rows, 0) << "input dimensions: " << input.size() << std::endl;
     ASSERT_NE(input.cols, 0) << "input dimensions: " << input.size() << std::endl;
