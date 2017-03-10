@@ -8,7 +8,7 @@ install:
 script:
   - mkdir build 
   - cd build
-  - cmake ../
+  - cmake ../ -DBUILD_TEST=OFF
   - make
 #   - clang -coverage -O0 hello.c -o hello
 #   - ./hello
