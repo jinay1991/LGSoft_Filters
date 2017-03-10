@@ -25,10 +25,10 @@ endif()
 # set compiler options such as compiler switch options
 option(BUILD_TEST "Build Unit Test applications." ON)
 
-set(MEDIAN_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/medianFilter/median.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
-set(CANNY_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/cannyEdgeDetector/canny.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
-set(LAPLACE_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/laplaceFilter/laplace.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
-set(INVERSE_UNIT ${CMAKE_CURRENT_SOURCE_DIR}/inverseFilter/inverse.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
+set(MEDIAN_UNIT    ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc ${CMAKE_CURRENT_SOURCE_DIR}/medianFilter/median.cpp     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp )
+set(CANNY_UNIT     ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc ${CMAKE_CURRENT_SOURCE_DIR}/cannyEdgeDetector/canny.cpp ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp )
+set(LAPLACE_UNIT   ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc ${CMAKE_CURRENT_SOURCE_DIR}/laplaceFilter/laplace.cpp   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp )
+set(INVERSE_UNIT   ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc ${CMAKE_CURRENT_SOURCE_DIR}/inverseFilter/inverse.cpp   ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp )
 
 set(SOURCE  ${CMAKE_CURRENT_SOURCE_DIR}/medianFilter/median.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/cannyEdgeDetector/canny.cpp
@@ -43,7 +43,7 @@ if(BUILD_TEST)
     find_package(OpenCV REQUIRED)
     include_directories(${OpenCV_INCLUDE_DIRS} ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/)
     # set Source files + gtest source
-    set(SOURCE ${SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc)
+    set(SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/gtest/gtest-all.cc ${SOURCE})
     # add compiler define to code
     add_definitions(-DUNIT_TEST)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
