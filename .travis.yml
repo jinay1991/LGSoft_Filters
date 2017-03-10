@@ -1,0 +1,14 @@
+language: c
+
+script:
+  - sudo apt-get install opencv cmake -y
+  - mkdir build 
+  - cd build
+  - cmake ../
+  - make
+#   - clang -coverage -O0 hello.c -o hello
+#   - ./hello
+#   - gcov hello.c
+
+# after_success:
+#   - bash <(curl -s https://codecov.io/bash)
