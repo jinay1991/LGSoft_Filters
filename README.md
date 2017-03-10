@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/jinay1991/imagefilters.svg?branch=master)](https://travis-ci.org/jinay1991/imagefilters)
+
 # imfilter
 Sample Stand-alone Implementations for Median Filter, Laplace Filter, Inverse Filter and Canny Edge Detection
 
