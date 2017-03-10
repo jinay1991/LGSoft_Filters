@@ -8,11 +8,11 @@ install:
 script:
   - mkdir build 
   - cd build
-  - cmake ../ -DBUILD_TEST=OFF
+  - cmake ../ -DBUILD_TEST=ON -DCMAKE_BUILD_TYPE=Release -DCOVERAGE=ON
   - make
 #   - clang -coverage -O0 hello.c -o hello
-#   - ./hello
-#   - gcov hello.c
+  - ./testCanny
+  - gcov CMakeFiles/testCanny.dir/cannyEdgeDetector/canny.cpp.gcno
 
 # after_success:
 #   - bash <(curl -s https://codecov.io/bash)

@@ -22,6 +22,12 @@ elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(STATUS "Build Type - Debug")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ggdb3 -O0")
 endif()
+option(COVERAGE "Support for Coverage" OFF)
+
+if (${COVERAGE})
+    set(CMAKE_CXX_FLAGS "-coverage ${CMAKE_CXX_FLAGS}")
+endif()
+
 # set compiler options such as compiler switch options
 option(BUILD_TEST "Build Unit Test applications." ON)
 
